@@ -112,7 +112,7 @@ city_picker() {
 special_servers_menu() {
   clear
   echo "🎯 Types de serveurs spécialisés :"
-  echo "1. P2P"
+  echo "1. P2P (torrent)"
   echo "2. Onion Over VPN"
   echo "3. Double VPN"
   echo "4. Obfuscated"
@@ -121,20 +121,46 @@ special_servers_menu() {
   read -p "👉 Choix [1-5] : " type
 
   case $type in
-    1) nordvpn connect --group P2P ;;
-    2) nordvpn connect --group Onion_Over_VPN ;;
-    3) nordvpn connect --group Double_VPN ;;
+    1)
+      echo "🔗 Connexion à un serveur P2P..."
+      nordvpn connect --group P2P || echo "❌ Échec de connexion P2P"
+      ;;
+    2)
+      echo "⚙️ Passage à OpenVPN requis..."
+      nordvpn set technology openvpn
+      echo "🔗 Connexion à un serveur Onion Over VPN..."
+      nordvpn connect --group Onion_Over_VPN || echo "❌ Échec de connexion Onion Over VPN"
+      ;;
+    3)
+      echo "⚙️ Passage à OpenVPN requis..."
+      nordvpn set technology openvpn
+      echo "🔗 Connexion à un serveur Double VPN..."
+      nordvpn connect --group Double_VPN || echo "❌ Échec de connexion Double VPN"
+      ;;
     4)
+      echo "⚙️ Passage à OpenVPN + obfuscation..."
       nordvpn set technology openvpn
       nordvpn set obfuscate on
-      nordvpn connect
+      echo "🔗 Connexion à un serveur obfusqué..."
+      nordvpn connect || echo "❌ Échec de connexion Obfuscated"
       ;;
-    5) main_menu ;;
-    *) echo "❌ Choix invalide." && pause && special_servers_menu ;;
+    5)
+      main_menu
+      return
+      ;;
+    *)
+      echo "❌ Choix invalide."
+
+      pause
+      special_servers_menu
+      return
+      ;;
   esac
+
   pause
   main_menu
 }
+
 
 protocol_menu() {
   clear
