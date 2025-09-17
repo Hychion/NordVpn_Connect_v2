@@ -5,20 +5,37 @@ pause() {
   read -p "🔁 Appuie sur Entrée pour continuer..."
 }
 
+# Fonction pour vérifier l'état de Tor
+check_tor_status() {
+  if systemctl is-active --quiet tor; then
+    return 0  # Tor est actif
+  else
+    return 1  # Tor est inactif
+  fi
+}
+
 main_menu() {
   clear
   echo "╔════════════════════════════════════╗"
   echo "║    🔐 NordVPN Connection Tool v2   ║"
   echo "╠════════════════════════════════════╣"
-  echo "║ 1. Connexion rapide (meilleur VPN)║"
-  echo "║ 2. Connexion par pays et ville    ║"
-  echo "║ 3. Serveurs spécialisés (P2P...)  ║"
-  echo "║ 4. Changer de protocole VPN       ║"
-  echo "║ 5. Quitter                        ║"
+  echo "║ 1. Connexion rapide (meilleur VPN) ║"
+  echo "║ 2. Connexion par pays et ville     ║"
+  echo "║ 3. Serveurs spécialisés (P2P...)   ║"
+  echo "║ 4. Changer de protocole VPN        ║"
+  echo "║ 5. Quitter                         ║"
   echo "║ 6. ℹ️ Aide / Explication           ║"
+  
+  # Affichage dynamique du statut Tor
+  if check_tor_status; then
+    echo "║ 7. Tor (Actif) 🟢                ║"
+  else
+    echo "║ 7. Tor (Inactif) 🔴              ║"
+  fi
+  
   echo "╚════════════════════════════════════╝"
   echo ""
-  read -p "👉 Choix [1-6] : " choix
+  read -p "👉 Choix [1-7] : " choix
 
   case $choix in
     1) nordvpn connect && pause && main_menu ;;
@@ -27,6 +44,7 @@ main_menu() {
     4) protocol_menu ;;
     5) echo "👋 À bientôt !"; exit 0 ;;
     6) show_help ;;
+    7) tor_menu ;;
     *) echo "❌ Choix invalide." && pause && main_menu ;;
   esac
 }
@@ -54,11 +72,87 @@ show_help() {
   echo ""
   echo "5. Quitter : Ferme le script."
   echo ""
+  echo "6. Aide : Affiche cette aide."
+  echo ""
+  echo "7. Gestion Tor :"
+  echo "   - Démarrer/arrêter le service Tor local."
+  echo "   - Vérifier l'état et tester la connexion via Tor."
+  echo "   - Compatible avec proxychains pour router le trafic."
+  echo ""
   echo "📌 Astuce : tu peux taper 'retour' dans n'importe quel menu pour revenir en arrière."
   pause
   main_menu
 }
 
+tor_menu() {
+  while true; do
+    clear
+    echo "🧅 Menu de gestion Tor"
+    echo ""
+    echo "1. Démarrer Tor"
+    echo "2. Arrêter Tor"
+    echo "3. Vérifier l'état"
+    echo "4. Retour au menu principal"
+    echo ""
+    read -p "👉 Choix [1-4] : " tor_choice
+
+    case $tor_choice in
+      1)
+        echo "🔄 Démarrage de Tor..."
+        if sudo systemctl start tor 2>/dev/null; then
+          echo "✅ Tor est lancé."
+        else
+          echo "❌ Échec du démarrage de Tor. Vérifiez que Tor est installé."
+        fi
+        pause
+        ;;
+      2)
+        echo "🔄 Arrêt de Tor..."
+        if sudo systemctl stop tor 2>/dev/null; then
+          echo "✅ Tor est arrêté."
+        else
+          echo "❌ Échec de l'arrêt de Tor."
+        fi
+        pause
+        ;;
+      3)
+        echo "🔍 Vérification de l'état de Tor..."
+        echo ""
+        echo "📊 État du service Tor :"
+        sudo systemctl status tor --no-pager -l
+        echo ""
+        
+        if check_tor_status; then
+          echo "🔗 Test de connexion via Tor..."
+          if command -v proxychains &> /dev/null; then
+            tor_test=$(proxychains -q curl -s --max-time 10 https://check.torproject.org/ 2>/dev/null)
+            if echo "$tor_test" | grep -q "Congratulations"; then
+              echo "✅ Connexion Tor fonctionnelle ! Vous utilisez bien Tor."
+            elif echo "$tor_test" | grep -q "Sorry"; then
+              echo "❌ Vous n'utilisez pas Tor pour cette connexion."
+            else
+              echo "⚠️  Test Tor inconcluant. Vérifiez votre configuration proxychains."
+            fi
+          else
+            echo "⚠️  proxychains non installé. Impossible de tester la connexion Tor."
+            echo "💡 Installez proxychains avec : sudo apt install proxychains"
+          fi
+        else
+          echo "❌ Tor n'est pas en cours d'exécution."
+        fi
+        pause
+        ;;
+      4)
+        main_menu
+        return
+        ;;
+      *)
+        echo "❌ Choix invalide."
+        pause
+        ;;
+    esac
+  done
+}
 
 country_menu() {
   clear
@@ -108,7 +202,6 @@ city_picker() {
   fi
 }
 
-
 special_servers_menu() {
   clear
   echo "🎯 Types de serveurs spécialisés :"
@@ -150,7 +243,6 @@ special_servers_menu() {
       ;;
     *)
       echo "❌ Choix invalide."
-
       pause
       special_servers_menu
       return
@@ -160,7 +252,6 @@ special_servers_menu() {
   pause
   main_menu
 }
-
 
 protocol_menu() {
   clear
